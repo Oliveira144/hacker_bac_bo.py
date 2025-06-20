@@ -378,9 +378,8 @@ def render_roadmap_history(results_list_latest_first, max_cols=30, max_rows_per_
             
             with cols_streamlit[c_idx]:
                 st.markdown(emoji_to_display)
-            else: # Add empty column if no data
-                with cols_streamlit[c_idx]:
-                    st.markdown(" ") # Espaço vazio para alinhar as colunas
+            # A linha 'else' que causou o erro foi removida aqui, pois é redundante.
+            # 'emoji_to_display' já conterá um espaço se não houver emoji para essa posição.
 
 # --- Streamlit UI ---
 
@@ -527,7 +526,7 @@ with col_break:
     st.write(f"**Último Tipo de Quebra:** {bp['last_break_type'] if bp['last_break_type'] else 'N/A'}")
     
     st.subheader("Padrões de Quebra e Específicos")
-    patterns = st.session_state.analysis_data['break_patterns'] # Completed this line
+    patterns = st.session_state.analysis_data['break_patterns']
     if patterns:
         for pattern, count in patterns.items():
             st.write(f"- {pattern}: {count}x")
@@ -564,7 +563,8 @@ if st.session_state.pattern_performance:
     performance_df = pd.DataFrame.from_dict(st.session_state.pattern_performance, orient='index')
     performance_df.index.name = 'Padrão'
     performance_df['Total'] = performance_df['successes'] + performance_df['failures']
-    performance_df['Acerto (%)'] = (performance_df['successes'] / performance_df['Total'] * 100).round(2)
+    # Evita divisão por zero se 'Total' for 0
+    performance_df['Acerto (%)'] = (performance_df['successes'] / performance_df['Total'] * 100).round(2).fillna(0)
     st.dataframe(performance_df.sort_values(by='Total', ascending=False))
 else:
     st.info("A performance dos padrões será rastreada após sugestões com garantia serem feitas e resultados registrados.")
