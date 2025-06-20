@@ -320,18 +320,19 @@ def update_analysis(results, pattern_performance):
     }
 
 # --- Função para Renderizar o Histórico (Roadmap) ---
-def render_roadmap_history(results_list_latest_first, max_cols=30):
+def render_roadmap_history(results_list_latest_first, max_cols=30, max_rows_per_col=6):
     """
-    Renderiza o histórico em formato de roadmap (torre e linha) usando emojis.
-    max_cols limita o número de colunas exibidas para evitar que a tela fique muito larga.
+    Renderiza o histórico em formato de roadmap (torre e linha) usando emojis e st.columns.
+    max_cols limita o número de colunas exibidas.
+    max_rows_per_col limita a altura de cada coluna para evitar rolagem excessiva e manter a visualização padrão do roadmap.
     """
     if not results_list_latest_first:
         st.write("Nenhum resultado para exibir o roadmap.")
         return
 
-    results_oldest_first = results_list_latest_first[::-1]
+    results_oldest_first = results_list_latest_first[::-1] # Inverter para analisar do mais antigo para o mais novo
 
-    roadmap_columns = []
+    roadmap_columns_data = []
     current_column = []
 
     for i, result in enumerate(results_oldest_first):
@@ -346,29 +347,71 @@ def render_roadmap_history(results_list_latest_first, max_cols=30):
             if current_result_color == last_result_in_current_col_color:
                 current_column.append(emoji)
             else:
-                roadmap_columns.append(current_column)
+                roadmap_columns_data.append(current_column)
                 current_column = [emoji]
     
-    if current_column:
-        roadmap_columns.append(current_column)
+    if current_column: # Adicionar a última coluna se houver
+        roadmap_columns_data.append(current_column)
 
-    roadmap_columns = roadmap_columns[-max_cols:]
+    # Limitar o número de colunas a serem exibidas
+    roadmap_columns_data = roadmap_columns_data[-max_cols:]
 
-    max_height = max(len(col) for col in roadmap_columns) if roadmap_columns else 0
+    # Encontrar a altura máxima para alinhar as linhas
+    max_height = max(len(col) for col in roadmap_columns_data) if roadmap_columns_data else 0
 
-    display_rows = []
-    for r_idx in range(max_height):
-        row_emojis = []
-        for c_idx, col in enumerate(roadmap_columns):
-            if r_idx < len(col):
-                row_emojis.append(col[r_idx])
+    # Ajustar a altura máxima para a altura padrão de roadmap (geralmente 6)
+    display_height = min(max_height, max_rows_per_col)
+
+    # Criar uma lista de colunas Streamlit que se estenderá por toda a largura
+    # Cada coluna do roadmap_columns_data será uma coluna Streamlit
+    cols_streamlit = st.columns(len(roadmap_columns_data))
+
+    # Preencher as colunas do Streamlit linha por linha (de baixo para cima para simular o roadmap)
+    for r_idx in range(display_height): # Iterar pelas linhas do roadmap (de 0 até display_height-1)
+        for c_idx, col_data in enumerate(roadmap_columns_data): # Iterar por cada coluna de dados do roadmap
+            # Calcular o índice do emoji na coluna atual para que o último emoji esteja na linha inferior
+            # Se a coluna tem 3 elementos, e display_height é 6, o 1º emoji vai para a linha 6-3=3, o 2º para 4, o 3º para 5.
+            # O emoji mais recente de uma coluna deve aparecer mais abaixo (últimas linhas)
+            
+            # Para renderizar de cima para baixo na tela, mas com a "base" da coluna na parte inferior da exibição:
+            # Pegamos o emoji da posição r_idx na coluna de dados.
+            # Se a coluna é menor que max_height, preenchemos o topo com espaço vazio.
+            
+            # Ajuste para renderizar a coluna "de baixo para cima" na UI, mantendo o emoji mais recente no topo da coluna visível:
+            # Queremos que o primeiro elemento do array `col_data` seja o "topo" da coluna visual.
+            # O roadmap é geralmente lido de cima para baixo, e a coluna cresce para baixo ou para o lado.
+            # No nosso caso, estamos construindo a coluna "para cima" no código (o topo da lista é o mais recente).
+            # Para exibição, o emoji mais *antigo* na coluna de dados deve estar na *base* da coluna visual.
+
+            # Revertendo a lógica de exibição para que o emoji mais antigo (base da coluna) apareça primeiro na exibição st.markdown
+            # e os mais novos empilhem acima.
+            if r_idx < len(col_data):
+                # Posição do emoji dentro da coluna (0 é o mais antigo na coluna, len-1 é o mais recente)
+                # Para mostrar de cima para baixo: use r_idx
+                # Para mostrar de baixo para cima (base do roadmap): use (len(col_data) - 1) - r_idx
+                
+                # Para uma coluna de roadmap, os elementos mais antigos estão na parte inferior da coluna.
+                # E as colunas se movem para a direita.
+                # Vamos construir as linhas.
+                
+                # Para exibir de cima para baixo (como uma lista vertical):
+                # Se len(col_data) é 5 e r_idx é 0, pegamos col_data[0]
+                
+                # Para simular o roadmap, precisamos alinhar os "fundos" das colunas.
+                # Se uma coluna tem 3 elementos, e a altura máxima é 6, ela terá 3 espaços vazios acima.
+                # O emoji mais antigo da coluna estará na posição (display_height - len(col_data)) na lista de row_emojis.
+                
+                emoji_to_display = " "
+                if r_idx >= (display_height - len(col_data)):
+                    # Calcula o índice real na lista col_data
+                    actual_idx_in_col_data = r_idx - (display_height - len(col_data))
+                    emoji_to_display = col_data[actual_idx_in_col_data]
+                
+                with cols_streamlit[c_idx]:
+                    st.markdown(emoji_to_display)
             else:
-                row_emojis.append("  ")
-        display_rows.append(" ".join(row_emojis))
-
-    for row_str in reversed(display_rows):
-        st.markdown(row_str)
-
+                with cols_streamlit[c_idx]:
+                    st.markdown(" ") # Espaço vazio para alinhar as colunas
 
 # --- Streamlit UI ---
 
@@ -474,7 +517,10 @@ st.markdown("---")
 
 # --- Histórico dos Últimos Resultados (Roadmap) ---
 st.header("📜 Histórico de Resultados (Roadmap Bac Bo)")
+# Envolver a renderização do roadmap em uma div com estilo para centralizar, se necessário
+st.markdown("<div style='display: flex; justify-content: center;'>", unsafe_allow_html=True)
 render_roadmap_history(st.session_state.results) 
+st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
