@@ -72,9 +72,9 @@ def analyze_colors(results):
     for result in relevant_results:
         color = get_color(result)
         color_counts[color] += 1
-    current_color = get_color(results[0])
+    current_color = get_color(results[0]) if results else '' # Handle empty results
     streak = 0
-    for result in results: 
+    for result in results:  
         if get_color(result) == current_color: streak += 1
         else: break
     color_pattern_27 = ''.join([get_color(r)[0].upper() for r in relevant_results]) # B for blue, R for red, Y for yellow
@@ -134,7 +134,7 @@ def analyze_tie_specifics(results):
     tie_count_27 = relevant_results.count('tie')
     tie_frequency_27 = (tie_count_27 / len(relevant_results)) * 100 if len(relevant_results) > 0 else 0
     time_since_last_tie = -1
-    for i, result in enumerate(results): 
+    for i, result in enumerate(results):  
         if result == 'tie': time_since_last_tie = i; break
     tie_patterns_found = collections.defaultdict(int)
     for i in range(len(relevant_results) - 1):
@@ -153,7 +153,7 @@ def analyze_tie_specifics(results):
 # --- Função de Sugestão com "IA" Simulada Adaptada (Jogador/Banca) ---
 def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_probability, break_patterns, tie_specifics, pattern_performance):
     """Gera uma sugestão de aposta baseada em múltiplas análises, com ajuste de confiança por performance de padrão."""
-    if not results or len(results) < 5: 
+    if not results or len(results) < 5:  
         return {'suggestion': 'Aguardando mais resultados para análise detalhada.', 'confidence': 0, 'reason': '', 'guarantee_pattern': 'N/A'}
 
     last_result_color = color_analysis['current_color']
@@ -197,7 +197,7 @@ def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_p
 
     # 2. Sugestão baseada em padrões recorrentes de quebra (2x1, 3x1)
     for pattern, count in break_patterns.items():
-        if count >= 3: 
+        if count >= 3:  
             if "2x1 (Blue 🔵 Red 🔴)" in pattern and last_result_color == 'blue' and current_streak == 2: # Adaptação de cores
                 confidence = adjust_confidence_by_performance(88, pattern)
                 suggestion = f"Apostar em **BANCA** {get_color_emoji('red')}"
@@ -225,7 +225,7 @@ def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_p
                 return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
 
     # 3. Sugestão de Empate (maior assertividade)
-    if tie_specifics['time_since_last_tie'] >= 7 and tie_specifics['tie_frequency_27'] < 12: 
+    if tie_specifics['time_since_last_tie'] >= 7 and tie_specifics['tie_frequency_27'] < 12:  
         pattern_name = "Empate Atrasado/Baixa Frequência"
         confidence = adjust_confidence_by_performance(78, pattern_name)
         suggestion = f"Considerar **EMPATE** {get_color_emoji('yellow')}"
@@ -256,7 +256,7 @@ def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_p
             return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
 
     # 4. Outras Sugestões (se as acima não se aplicarem com alta confiança)
-    if break_probability['break_chance'] > 65 and current_streak < 3: 
+    if break_probability['break_chance'] > 65 and current_streak < 3:  
         if len(results) >= 2:
             prev_color = get_color(results[1])
             pattern_name = "Alta Probabilidade de Quebra Geral"
@@ -275,8 +275,8 @@ def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_p
     guarantee_pattern = "Nenhum Padrão Forte"
 
     return {
-        'suggestion': suggestion, 
-        'confidence': round(confidence), 
+        'suggestion': suggestion,  
+        'confidence': round(confidence),  
         'reason': reason,
         'guarantee_pattern': guarantee_pattern
     }
@@ -296,12 +296,12 @@ def update_analysis(results, pattern_performance):
             'suggestion': {'suggestion': 'Aguardando resultados para análise.', 'confidence': 0, 'reason': '', 'guarantee_pattern': 'N/A'}
         }
 
-    stats = {'player': relevant_results_for_analysis.count('player'), 
-             'banker': relevant_results_for_analysis.count('banker'), 
-             'tie': relevant_results_for_analysis.count('tie'), 
+    stats = {'player': relevant_results_for_analysis.count('player'),  
+             'banker': relevant_results_for_analysis.count('banker'),  
+             'tie': relevant_results_for_analysis.count('tie'),  
              'total': len(relevant_results_for_analysis)}
     
-    surf_analysis = analyze_surf(results) 
+    surf_analysis = analyze_surf(results)  
     color_analysis = analyze_colors(results)
     break_patterns = find_break_patterns(results)
     break_probability = analyze_break_probability(results)
@@ -369,47 +369,16 @@ def render_roadmap_history(results_list_latest_first, max_cols=30, max_rows_per_
     # Preencher as colunas do Streamlit linha por linha (de baixo para cima para simular o roadmap)
     for r_idx in range(display_height): # Iterar pelas linhas do roadmap (de 0 até display_height-1)
         for c_idx, col_data in enumerate(roadmap_columns_data): # Iterar por cada coluna de dados do roadmap
-            # Calcular o índice do emoji na coluna atual para que o último emoji esteja na linha inferior
-            # Se a coluna tem 3 elementos, e display_height é 6, o 1º emoji vai para a linha 6-3=3, o 2º para 4, o 3º para 5.
-            # O emoji mais recente de uma coluna deve aparecer mais abaixo (últimas linhas)
             
-            # Para renderizar de cima para baixo na tela, mas com a "base" da coluna na parte inferior da exibição:
-            # Pegamos o emoji da posição r_idx na coluna de dados.
-            # Se a coluna é menor que max_height, preenchemos o topo com espaço vazio.
+            emoji_to_display = " "
+            if r_idx >= (display_height - len(col_data)):
+                # Calcula o índice real na lista col_data
+                actual_idx_in_col_data = r_idx - (display_height - len(col_data))
+                emoji_to_display = col_data[actual_idx_in_col_data]
             
-            # Ajuste para renderizar a coluna "de baixo para cima" na UI, mantendo o emoji mais recente no topo da coluna visível:
-            # Queremos que o primeiro elemento do array `col_data` seja o "topo" da coluna visual.
-            # O roadmap é geralmente lido de cima para baixo, e a coluna cresce para baixo ou para o lado.
-            # No nosso caso, estamos construindo a coluna "para cima" no código (o topo da lista é o mais recente).
-            # Para exibição, o emoji mais *antigo* na coluna de dados deve estar na *base* da coluna visual.
-
-            # Revertendo a lógica de exibição para que o emoji mais antigo (base da coluna) apareça primeiro na exibição st.markdown
-            # e os mais novos empilhem acima.
-            if r_idx < len(col_data):
-                # Posição do emoji dentro da coluna (0 é o mais antigo na coluna, len-1 é o mais recente)
-                # Para mostrar de cima para baixo: use r_idx
-                # Para mostrar de baixo para cima (base do roadmap): use (len(col_data) - 1) - r_idx
-                
-                # Para uma coluna de roadmap, os elementos mais antigos estão na parte inferior da coluna.
-                # E as colunas se movem para a direita.
-                # Vamos construir as linhas.
-                
-                # Para exibir de cima para baixo (como uma lista vertical):
-                # Se len(col_data) é 5 e r_idx é 0, pegamos col_data[0]
-                
-                # Para simular o roadmap, precisamos alinhar os "fundos" das colunas.
-                # Se uma coluna tem 3 elementos, e a altura máxima é 6, ela terá 3 espaços vazios acima.
-                # O emoji mais antigo da coluna estará na posição (display_height - len(col_data)) na lista de row_emojis.
-                
-                emoji_to_display = " "
-                if r_idx >= (display_height - len(col_data)):
-                    # Calcula o índice real na lista col_data
-                    actual_idx_in_col_data = r_idx - (display_height - len(col_data))
-                    emoji_to_display = col_data[actual_idx_in_col_data]
-                
-                with cols_streamlit[c_idx]:
-                    st.markdown(emoji_to_display)
-            else:
+            with cols_streamlit[c_idx]:
+                st.markdown(emoji_to_display)
+            else: # Add empty column if no data
                 with cols_streamlit[c_idx]:
                     st.markdown(" ") # Espaço vazio para alinhar as colunas
 
@@ -423,12 +392,12 @@ st.write("Sistema Avançado de Análise e Predição com Adaptação de Padrões
 # --- Gerenciamento de Estado ---
 if 'results' not in st.session_state:
     st.session_state.results = []
-if 'last_suggested_bet_info' not in st.session_state: 
+if 'last_suggested_bet_info' not in st.session_state:  
     st.session_state.last_suggested_bet_info = None
-if 'guarantee_failed_streak' not in st.session_state: 
+if 'guarantee_failed_streak' not in st.session_state:  
     st.session_state.guarantee_failed_streak = 0
 if 'pattern_performance' not in st.session_state:
-    st.session_state.pattern_performance = {} 
+    st.session_state.pattern_performance = {}  
 
 if 'analysis_data' not in st.session_state:
     st.session_state.analysis_data = update_analysis(st.session_state.results, st.session_state.pattern_performance)
@@ -438,7 +407,7 @@ if 'analysis_data' not in st.session_state:
 def add_result(result):
     if st.session_state.last_suggested_bet_info:
         last_suggestion = st.session_state.last_suggested_bet_info
-        suggested_outcome = None 
+        suggested_outcome = None  
 
         if "JOGADOR" in last_suggestion['suggestion']: # Adaptado
             suggested_outcome = 'player'
@@ -457,17 +426,17 @@ def add_result(result):
 
             if actual_color == suggested_color:
                 st.session_state.pattern_performance[pattern_name]['successes'] += 1
-                st.session_state.guarantee_failed_streak = 0 
+                st.session_state.guarantee_failed_streak = 0  
             else:
                 st.session_state.pattern_performance[pattern_name]['failures'] += 1
-                st.session_state.guarantee_failed_streak += 1 
+                st.session_state.guarantee_failed_streak += 1  
                 st.warning(f"🚨 **ALERTA: A GARANTIA DO PADRÃO '{pattern_name}' FALHOU!**")
                 
-        else: 
+        else:  
             st.session_state.guarantee_failed_streak = 0
 
-    st.session_state.results.insert(0, result) 
-    st.session_state.results = st.session_state.results[:MAX_HISTORY_TO_STORE] 
+    st.session_state.results.insert(0, result)  
+    st.session_state.results = st.session_state.results[:MAX_HISTORY_TO_STORE]  
     
     st.session_state.analysis_data = update_analysis(st.session_state.results, st.session_state.pattern_performance)
     
@@ -476,11 +445,11 @@ def add_result(result):
 # --- Função para Limpar Histórico ---
 def clear_history():
     st.session_state.results = []
-    st.session_state.analysis_data = update_analysis([], {}) 
+    st.session_state.analysis_data = update_analysis([], {})  
     st.session_state.last_suggested_bet_info = None
     st.session_state.guarantee_failed_streak = 0
-    st.session_state.pattern_performance = {} 
-    st.experimental_rerun() 
+    st.session_state.pattern_performance = {}  
+    st.experimental_rerun()  
 
 # --- Layout ---
 st.header("Registrar Resultado")
@@ -519,7 +488,7 @@ st.markdown("---")
 st.header("📜 Histórico de Resultados (Roadmap Bac Bo)")
 # Envolver a renderização do roadmap em uma div com estilo para centralizar, se necessário
 st.markdown("<div style='display: flex; justify-content: center;'>", unsafe_allow_html=True)
-render_roadmap_history(st.session_state.results) 
+render_roadmap_history(st.session_state.results)  
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
@@ -558,57 +527,51 @@ with col_break:
     st.write(f"**Último Tipo de Quebra:** {bp['last_break_type'] if bp['last_break_type'] else 'N/A'}")
     
     st.subheader("Padrões de Quebra e Específicos")
-    patterns = st.session_state.analysis_data['break_patterns']
+    patterns = st.session_state.analysis_data['break_patterns'] # Completed this line
     if patterns:
         for pattern, count in patterns.items():
             st.write(f"- {pattern}: {count}x")
     else:
-        st.write("Nenhum padrão identificado nos últimos 27 resultados.")
+        st.write("Nenhum padrão de quebra significativo detectado.")
 
 with col_surf:
     st.subheader("Análise de Surf")
     surf = st.session_state.analysis_data['surf_analysis']
-    st.write(f"**Seq. Atual Jogador {get_color_emoji('blue')}:** {surf['player_sequence']}x")
-    st.write(f"**Seq. Atual Banca {get_color_emoji('red')}:** {surf['banker_sequence']}x")
-    st.write(f"**Seq. Atual Empate {get_color_emoji('yellow')}:** {surf['tie_sequence']}x")
-    st.write(f"---")
-    st.write(f"**Máx. Seq. Jogador:** {surf['max_player_sequence']}x")
-    st.write(f"**Máx. Seq. Banca:** {surf['max_banker_sequence']}x")
-    st.write(f"**Máx. Seq. Empate:** {surf['max_tie_sequence']}x")
+    st.write(f"**Sequência Atual (Jogador {get_color_emoji('blue')}):** {surf['player_sequence']}x")
+    st.write(f"**Máx. Sequência Histórica (Jogador {get_color_emoji('blue')}):** {surf['max_player_sequence']}x")
+    st.write(f"**Sequência Atual (Banca {get_color_emoji('red')}):** {surf['banker_sequence']}x")
+    st.write(f"**Máx. Sequência Histórica (Banca {get_color_emoji('red')}):** {surf['max_banker_sequence']}x")
+    st.write(f"**Sequência Atual (Empate {get_color_emoji('yellow')}):** {surf['tie_sequence']}x")
+    st.write(f"**Máx. Sequência Histórica (Empate {get_color_emoji('yellow')}):** {surf['max_tie_sequence']}x")
 
 with col_tie_analysis:
-    st.subheader("Análise Detalhada de Empates")
-    tie_data = st.session_state.analysis_data['tie_specifics']
-    st.write(f"**Frequência Empate ({NUM_RECENT_RESULTS_FOR_ANALYSIS}):** {tie_data['tie_frequency_27']}%")
-    st.write(f"**Rodadas sem Empate:** {tie_data['time_since_last_tie']} (Desde o último empate)")
-    
-    st.subheader("Padrões de Empate Históricos")
-    if tie_data['tie_patterns']:
-        for pattern, count in tie_data['tie_patterns'].items():
+    st.subheader("Análise de Empate")
+    tie_spec = st.session_state.analysis_data['tie_specifics']
+    st.write(f"**Frequência de Empate (últimos {NUM_RECENT_RESULTS_FOR_ANALYSIS}):** {tie_spec['tie_frequency_27']}%")
+    st.write(f"**Tempo desde o Último Empate:** {tie_spec['time_since_last_tie']} rodadas")
+    st.write("**Padrões de Empate Detectados:**")
+    if tie_spec['tie_patterns']:
+        for pattern, count in tie_spec['tie_patterns'].items():
             st.write(f"- {pattern}: {count}x")
     else:
-        st.write("Nenhum padrão de empate identificado ainda.")
+        st.write("Nenhum padrão de empate específico detectado.")
 
 st.markdown("---")
 
-# --- Desempenho dos Padrões (Seção "IA") ---
-st.header("🧠 Desempenho e Adaptação dos Padrões (Simulação de IA)")
+# --- Performance dos Padrões (IA) ---
+st.header("📈 Performance dos Padrões (IA Adaptativa)")
 if st.session_state.pattern_performance:
-    pattern_perf_df = pd.DataFrame.from_dict(st.session_state.pattern_performance, orient='index')
-    pattern_perf_df.index.name = 'Padrão'
-    pattern_perf_df.reset_index(inplace=True)
-    
-    pattern_perf_df['Taxa de Sucesso'] = (pattern_perf_df['successes'] / (pattern_perf_df['successes'] + pattern_perf_df['failures']) * 100).fillna(0).round(2)
-    
-    st.dataframe(pattern_perf_df.sort_values(by='Taxa de Sucesso', ascending=False), use_container_width=True)
-    st.write("A confiança nas sugestões é ajustada com base neste desempenho.")
+    performance_df = pd.DataFrame.from_dict(st.session_state.pattern_performance, orient='index')
+    performance_df.index.name = 'Padrão'
+    performance_df['Total'] = performance_df['successes'] + performance_df['failures']
+    performance_df['Acerto (%)'] = (performance_df['successes'] / performance_df['Total'] * 100).round(2)
+    st.dataframe(performance_df.sort_values(by='Total', ascending=False))
 else:
-    st.write("Comece a registrar resultados para a IA começar a aprender o desempenho dos padrões.")
-
+    st.info("A performance dos padrões será rastreada após sugestões com garantia serem feitas e resultados registrados.")
 
 st.markdown("---")
 
-# --- Botão Limpar Histórico Geral (agora no final, para limpar tudo) ---
-st.header("Controles Gerais")
-if st.button("Limpar Histórico Completo (e Dados da IA)", type="secondary", use_container_width=True):
-    clear_history()
+# --- Botão para Limpar Histórico ---
+st.button("Limpar Todo o Histórico", on_click=clear_history, help="Apaga todos os resultados e dados de análise.", type="secondary")
+
+st.caption("Desenvolvido para análise de padrões no Bac Bo. Use com cautela e responsabilidade.")
