@@ -1,78 +1,74 @@
 import streamlit as st
 import pandas as pd
 import collections
-import time # Para simular um atraso na entrada de dados, se necessário
+import time
 
 # --- Constantes e Funções Auxiliares ---
 NUM_RECENT_RESULTS_FOR_ANALYSIS = 27
 MAX_HISTORY_TO_STORE = 1000
-NUM_HISTORY_TO_DISPLAY = 100
 
-# Cores e Emojis (mantido o padrão)
+# Resultados do Bac Bo: 'player', 'banker', 'tie'
+# Mapeamento de cores para visualização conforme sua solicitação
 def get_color(result):
-    if result == 'home': return 'red'
-    elif result == 'away': return 'blue'
-    else: return 'yellow'
+    if result == 'player': return 'blue'    # Jogador (azul)
+    elif result == 'banker': return 'red'   # Banca (vermelho)
+    else: return 'yellow' # Empate (amarelo)
 
 def get_color_emoji(color):
-    if color == 'red': return '🔴'
-    elif color == 'blue': return '🔵'
-    elif color == 'yellow': return '🟡'
+    if color == 'blue': return '🔵'  # Emoji para Jogador (azul)
+    elif color == 'red': return '🔴'    # Emoji para Banca (vermelho)
+    elif color == 'yellow': return '🟡' # Emoji para Empate (amarelo)
     return ''
 
-# --- Funções de Análise (Mantidas, mas adaptadas para as novas features) ---
-
-# As funções analyze_surf, analyze_colors, find_break_patterns, analyze_break_probability, analyze_draw_specifics
-# permanecem as mesmas em sua lógica interna, pois elas apenas extraem dados.
-# A inteligência de "IA" será aplicada na generate_advanced_suggestion e no gerenciamento de estado.
+# --- Funções de Análise Adaptadas para Bac Bo (Jogador/Banca) ---
 
 def analyze_surf(results):
     relevant_results = results[:NUM_RECENT_RESULTS_FOR_ANALYSIS]
     if not relevant_results:
-        return {'home_sequence': 0, 'away_sequence': 0, 'draw_sequence': 0,
-                'max_home_sequence': 0, 'max_away_sequence': 0, 'max_draw_sequence': 0}
+        return {'player_sequence': 0, 'banker_sequence': 0, 'tie_sequence': 0,
+                'max_player_sequence': 0, 'max_banker_sequence': 0, 'max_tie_sequence': 0}
     
-    max_home_sequence = 0
-    max_away_sequence = 0
-    max_draw_sequence = 0
-    temp_home_seq = 0
-    temp_away_seq = 0
-    temp_draw_seq = 0
+    max_player_sequence = 0
+    max_banker_sequence = 0
+    max_tie_sequence = 0
+    temp_player_seq = 0
+    temp_banker_seq = 0
+    temp_tie_seq = 0
 
     for i in range(len(relevant_results)):
         result = relevant_results[i]
-        if result == 'home':
-            temp_home_seq += 1; temp_away_seq = 0; temp_draw_seq = 0
-        elif result == 'away':
-            temp_away_seq += 1; temp_home_seq = 0; temp_draw_seq = 0
-        else: # draw
-            temp_draw_seq += 1; temp_home_seq = 0; temp_away_seq = 0
-        max_home_sequence = max(max_home_sequence, temp_home_seq)
-        max_away_sequence = max(max_away_sequence, temp_away_seq)
-        max_draw_sequence = max(max_draw_sequence, temp_draw_seq)
+        if result == 'player':
+            temp_player_seq += 1; temp_banker_seq = 0; temp_tie_seq = 0
+        elif result == 'banker':
+            temp_banker_seq += 1; temp_player_seq = 0; temp_tie_seq = 0
+        else: # tie
+            temp_tie_seq += 1; temp_player_seq = 0; temp_banker_seq = 0
+        max_player_sequence = max(max_player_sequence, temp_player_seq)
+        max_banker_sequence = max(max_banker_sequence, temp_banker_seq)
+        max_tie_sequence = max(max_tie_sequence, temp_tie_seq)
 
-    actual_current_home_sequence = 0
-    actual_current_away_sequence = 0
-    actual_current_draw_sequence = 0
+    actual_current_player_sequence = 0
+    actual_current_banker_sequence = 0
+    actual_current_tie_sequence = 0
     if relevant_results:
         first_result = relevant_results[0]
         for r in relevant_results:
             if r == first_result:
-                if first_result == 'home': actual_current_home_sequence += 1
-                elif first_result == 'away': actual_current_away_sequence += 1
-                else: actual_current_draw_sequence += 1
+                if first_result == 'player': actual_current_player_sequence += 1
+                elif first_result == 'banker': actual_current_banker_sequence += 1
+                else: actual_current_tie_sequence += 1
             else: break
     return {
-        'home_sequence': actual_current_home_sequence, 'away_sequence': actual_current_away_sequence,
-        'draw_sequence': actual_current_draw_sequence, 'max_home_sequence': max_home_sequence,
-        'max_away_sequence': max_away_sequence, 'max_draw_sequence': max_draw_sequence
+        'player_sequence': actual_current_player_sequence, 'banker_sequence': actual_current_banker_sequence,
+        'tie_sequence': actual_current_tie_sequence, 'max_player_sequence': max_player_sequence,
+        'max_banker_sequence': max_banker_sequence, 'max_tie_sequence': max_tie_sequence
     }
 
 def analyze_colors(results):
     relevant_results = results[:NUM_RECENT_RESULTS_FOR_ANALYSIS]
     if not relevant_results:
-        return {'red': 0, 'blue': 0, 'yellow': 0, 'current_color': '', 'streak': 0, 'color_pattern_27': ''}
-    color_counts = {'red': 0, 'blue': 0, 'yellow': 0}
+        return {'blue': 0, 'red': 0, 'yellow': 0, 'current_color': '', 'streak': 0, 'color_pattern_27': ''}
+    color_counts = {'blue': 0, 'red': 0, 'yellow': 0}
     for result in relevant_results:
         color = get_color(result)
         color_counts[color] += 1
@@ -81,9 +77,9 @@ def analyze_colors(results):
     for result in results: 
         if get_color(result) == current_color: streak += 1
         else: break
-    color_pattern_27 = ''.join([get_color(r)[0].upper() for r in relevant_results])
+    color_pattern_27 = ''.join([get_color(r)[0].upper() for r in relevant_results]) # B for blue, R for red, Y for yellow
     return {
-        'red': color_counts['red'], 'blue': color_counts['blue'], 'yellow': color_counts['yellow'],
+        'blue': color_counts['blue'], 'red': color_counts['red'], 'yellow': color_counts['yellow'],
         'current_color': current_color, 'streak': streak, 'color_pattern_27': color_pattern_27
     }
 
@@ -112,10 +108,10 @@ def find_break_patterns(results):
             if color1 == color2 and color2 == color3 and color4 == color5 and color5 == color6 and color1 != color4: patterns[f"3x3 ({color1.capitalize()} {get_color_emoji(color1)} {color4.capitalize()}{get_color_emoji(color4)})"] += 1
     for i in range(len(relevant_results) - 1):
         color1 = get_color(relevant_results[i]); color2 = get_color(relevant_results[i+1])
-        if color2 == 'yellow' and color1 != 'yellow': patterns[f"X Y Draw ({color1.capitalize()}{get_color_emoji(color1)} {color2.capitalize()}{get_color_emoji(color2)})"] += 1
+        if color2 == 'yellow' and color1 != 'yellow': patterns[f"X Y Empate ({color1.capitalize()}{get_color_emoji(color1)} {color2.capitalize()}{get_color_emoji(color2)})"] += 1 # Adaptação: X Y Tie -> X Y Empate
         if i < len(relevant_results) - 2:
             color3 = get_color(relevant_results[i+2])
-            if color1 == 'yellow' and color2 != 'yellow' and color3 != 'yellow' and color2 != color3: patterns[f"Draw X Y ({color1.capitalize()}{get_color_emoji(color1)} {color2.capitalize()}{get_color_emoji(color2)} {color3.capitalize()}{get_color_emoji(color3)})"] += 1
+            if color1 == 'yellow' and color2 != 'yellow' and color3 != 'yellow' and color2 != color3: patterns[f"Empate X Y ({color1.capitalize()}{get_color_emoji(color1)} {color2.capitalize()}{get_color_emoji(color2)} {color3.capitalize()}{get_color_emoji(color3)})"] += 1 # Adaptação: Tie X Y -> Empate X Y
     return dict(patterns)
 
 def analyze_break_probability(results):
@@ -131,32 +127,31 @@ def analyze_break_probability(results):
         last_break_type = f"Quebrou de {get_color(results[1]).capitalize()} {get_color_emoji(get_color(results[1]))} para {get_color(results[0]).capitalize()} {get_color_emoji(get_color(results[0]))}"
     return {'break_chance': round(break_chance, 2), 'last_break_type': last_break_type}
 
-def analyze_draw_specifics(results):
+def analyze_tie_specifics(results):
     relevant_results = results[:NUM_RECENT_RESULTS_FOR_ANALYSIS]
     if not relevant_results:
-        return {'draw_frequency_27': 0, 'time_since_last_draw': -1, 'draw_patterns': {}}
-    draw_count_27 = relevant_results.count('draw')
-    draw_frequency_27 = (draw_count_27 / len(relevant_results)) * 100 if len(relevant_results) > 0 else 0
-    time_since_last_draw = -1
+        return {'tie_frequency_27': 0, 'time_since_last_tie': -1, 'tie_patterns': {}}
+    tie_count_27 = relevant_results.count('tie')
+    tie_frequency_27 = (tie_count_27 / len(relevant_results)) * 100 if len(relevant_results) > 0 else 0
+    time_since_last_tie = -1
     for i, result in enumerate(results): 
-        if result == 'draw': time_since_last_draw = i; break
-    draw_patterns_found = collections.defaultdict(int)
+        if result == 'tie': time_since_last_tie = i; break
+    tie_patterns_found = collections.defaultdict(int)
     for i in range(len(relevant_results) - 1):
         color1 = get_color(relevant_results[i]); color2 = get_color(relevant_results[i+1])
-        if color2 == 'yellow' and color1 != 'yellow': draw_patterns_found[f"Quebra para Empate ({color1.capitalize()}{get_color_emoji(color1)} para Empate{get_color_emoji('yellow')})"] += 1
+        if color2 == 'yellow' and color1 != 'yellow': tie_patterns_found[f"Quebra para Empate ({color1.capitalize()}{get_color_emoji(color1)} para Empate{get_color_emoji('yellow')})"] += 1
         if i < len(relevant_results) - 2:
             color3 = get_color(relevant_results[i+2])
             if color3 == 'yellow':
-                if color1 == 'red' and color2 == 'blue': draw_patterns_found["Red-Blue-Draw (🔴🔵🟡)"] += 1
-                elif color1 == 'blue' and color2 == 'red': draw_patterns_found["Blue-Red-Draw (🔵🔴🟡)"] += 1
+                if color1 == 'blue' and color2 == 'red': tie_patterns_found["Jogador-Banca-Empate (🔵🔴🟡)"] += 1 # Adaptação
+                elif color1 == 'red' and color2 == 'blue': tie_patterns_found["Banca-Jogador-Empate (🔴🔵🟡)"] += 1 # Adaptação
     return {
-        'draw_frequency_27': round(draw_frequency_27, 2), 'time_since_last_draw': time_since_last_draw,
-        'draw_patterns': dict(draw_patterns_found)
+        'tie_frequency_27': round(tie_frequency_27, 2), 'time_since_last_tie': time_since_last_tie,
+        'tie_patterns': dict(tie_patterns_found)
     }
 
-# --- Função de Sugestão com "IA" Simulada ---
-
-def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_probability, break_patterns, draw_specifics, pattern_performance):
+# --- Função de Sugestão com "IA" Simulada Adaptada (Jogador/Banca) ---
+def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_probability, break_patterns, tie_specifics, pattern_performance):
     """Gera uma sugestão de aposta baseada em múltiplas análises, com ajuste de confiança por performance de padrão."""
     if not results or len(results) < 5: 
         return {'suggestion': 'Aguardando mais resultados para análise detalhada.', 'confidence': 0, 'reason': '', 'guarantee_pattern': 'N/A'}
@@ -169,107 +164,96 @@ def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_p
     reason = "Análise preliminar."
     guarantee_pattern = "N/A"
 
-    # Função auxiliar para ajustar a confiança com base no desempenho do padrão
     def adjust_confidence_by_performance(base_confidence, pattern_name):
         if pattern_name in pattern_performance:
             performance = pattern_performance[pattern_name]
-            # Uma pontuação de confiabilidade simples: (sucessos + 1) / (sucessos + falhas + 2)
-            # Adiciona 1/2 para evitar divisão por zero ou muito baixa em início
             reliability = (performance['successes'] + 1) / (performance['successes'] + performance['failures'] + 2)
-            
-            # Ajusta a confiança baseada na confiabilidade (ex: max de 100%, min de 20%)
-            adjusted_confidence = base_confidence * reliability * 1.2 # Multiplicador para não cair tão rápido
-            return min(95, max(20, int(adjusted_confidence))) # Garante que fique entre 20 e 95
+            adjusted_confidence = base_confidence * reliability * 1.2
+            return min(95, max(20, int(adjusted_confidence)))
         return base_confidence
 
-    # Lógica de Sugestão Aprimorada com Ajuste de Confiança
-    
     # 1. Sugestão baseada em Sequência Longa e Máximo Histórico de Surf
-    if last_result_color == 'red' and current_streak >= surf_analysis['max_home_sequence'] and surf_analysis['max_home_sequence'] > 0 and current_streak >= 3:
+    if last_result_color == 'blue' and current_streak >= surf_analysis['max_player_sequence'] and surf_analysis['max_player_sequence'] > 0 and current_streak >= 3: # Adaptado para 'blue'/'player'
         pattern_name = f"Surf Max Quebra: {last_result_color.capitalize()}"
         confidence = adjust_confidence_by_performance(95, pattern_name)
-        suggestion = f"APOSTA FORTE em **VISITANTE** {get_color_emoji('blue')}"
-        reason = f"Sequência atual de Vermelho ({current_streak}x) atingiu ou superou o máximo histórico de surf. Grande chance de quebra."
+        suggestion = f"APOSTA FORTE em **BANCA** {get_color_emoji('red')}" # Sugere Banca
+        reason = f"Sequência atual de Jogador ({current_streak}x) atingiu ou superou o máximo histórico de surf. Grande chance de quebra."
         guarantee_pattern = pattern_name
         return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
-    elif last_result_color == 'blue' and current_streak >= surf_analysis['max_away_sequence'] and surf_analysis['max_away_sequence'] > 0 and current_streak >= 3:
+    elif last_result_color == 'red' and current_streak >= surf_analysis['max_banker_sequence'] and surf_analysis['max_banker_sequence'] > 0 and current_streak >= 3: # Adaptado para 'red'/'banker'
         pattern_name = f"Surf Max Quebra: {last_result_color.capitalize()}"
         confidence = adjust_confidence_by_performance(95, pattern_name)
-        suggestion = f"APOSTA FORTE em **CASA** {get_color_emoji('red')}"
-        reason = f"Sequência atual de Azul ({current_streak}x) atingiu ou superou o máximo histórico de surf. Grande chance de quebra."
+        suggestion = f"APOSTA FORTE em **JOGADOR** {get_color_emoji('blue')}" # Sugere Jogador
+        reason = f"Sequência atual de Banca ({current_streak}x) atingiu ou superou o máximo histórico de surf. Grande chance de quebra."
         guarantee_pattern = pattern_name
         return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
-    elif last_result_color == 'yellow' and current_streak >= surf_analysis['max_draw_sequence'] and surf_analysis['max_draw_sequence'] > 0 and current_streak >= 2:
+    elif last_result_color == 'yellow' and current_streak >= surf_analysis['max_tie_sequence'] and surf_analysis['max_tie_sequence'] > 0 and current_streak >= 2:
         pattern_name = f"Surf Max Quebra: {last_result_color.capitalize()}"
         confidence = adjust_confidence_by_performance(90, pattern_name)
-        suggestion = f"APOSTA FORTE em **CASA** {get_color_emoji('red')} ou **VISITANTE** {get_color_emoji('blue')}"
+        suggestion = f"APOSTA FORTE em **JOGADOR** {get_color_emoji('blue')} ou **BANCA** {get_color_emoji('red')}" # Sugere Jogador ou Banca
         reason = f"Sequência atual de Empate ({current_streak}x) atingiu ou superou o máximo histórico de surf. Grande chance de retorno às cores principais."
         guarantee_pattern = pattern_name
         return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
 
-
     # 2. Sugestão baseada em padrões recorrentes de quebra (2x1, 3x1)
     for pattern, count in break_patterns.items():
         if count >= 3: 
-            if "2x1 (Red 🔴 Blue 🔵)" in pattern and last_result_color == 'red' and current_streak == 2:
+            if "2x1 (Blue 🔵 Red 🔴)" in pattern and last_result_color == 'blue' and current_streak == 2: # Adaptação de cores
                 confidence = adjust_confidence_by_performance(88, pattern)
-                suggestion = f"Apostar em **VISITANTE** {get_color_emoji('blue')}"
-                reason = f"Padrão 2x1 (🔴🔴🔵) altamente recorrente ({count}x). Espera-se a quebra para azul."
+                suggestion = f"Apostar em **BANCA** {get_color_emoji('red')}"
+                reason = f"Padrão 2x1 (🔵🔵🔴) altamente recorrente ({count}x). Espera-se a quebra para Banca."
                 guarantee_pattern = pattern
                 return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
-            elif "2x1 (Blue 🔵 Red 🔴)" in pattern and last_result_color == 'blue' and current_streak == 2:
+            elif "2x1 (Red 🔴 Blue 🔵)" in pattern and last_result_color == 'red' and current_streak == 2: # Adaptação de cores
                 confidence = adjust_confidence_by_performance(88, pattern)
-                suggestion = f"Apostar em **CASA** {get_color_emoji('red')}"
-                reason = f"Padrão 2x1 (🔵🔵🔴) altamente recorrente ({count}x). Espera-se a quebra para vermelho."
+                suggestion = f"Apostar em **JOGADOR** {get_color_emoji('blue')}"
+                reason = f"Padrão 2x1 (🔴🔴🔵) altamente recorrente ({count}x). Espera-se a quebra para Jogador."
                 guarantee_pattern = pattern
                 return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
             
-            elif "3x1 (Red 🔴 Blue 🔵)" in pattern and last_result_color == 'red' and current_streak == 3:
+            elif "3x1 (Blue 🔵 Red 🔴)" in pattern and last_result_color == 'blue' and current_streak == 3: # Adaptação de cores
                 confidence = adjust_confidence_by_performance(92, pattern)
-                suggestion = f"Apostar em **VISITANTE** {get_color_emoji('blue')}"
-                reason = f"Padrão 3x1 (🔴🔴🔴🔵) altamente recorrente ({count}x). Espera-se a quebra para azul."
+                suggestion = f"Apostar em **BANCA** {get_color_emoji('red')}"
+                reason = f"Padrão 3x1 (🔵🔵🔵🔴) altamente recorrente ({count}x). Espera-se a quebra para Banca."
                 guarantee_pattern = pattern
                 return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
-            elif "3x1 (Blue 🔵 Red 🔴)" in pattern and last_result_color == 'blue' and current_streak == 3:
+            elif "3x1 (Red 🔴 Blue 🔵)" in pattern and last_result_color == 'red' and current_streak == 3: # Adaptação de cores
                 confidence = adjust_confidence_by_performance(92, pattern)
-                suggestion = f"Apostar em **CASA** {get_color_emoji('red')}"
-                reason = f"Padrão 3x1 (🔵🔵🔵🔴) altamente recorrente ({count}x). Espera-se a quebra para vermelho."
+                suggestion = f"Apostar em **JOGADOR** {get_color_emoji('blue')}"
+                reason = f"Padrão 3x1 (🔴🔴🔴🔵) altamente recorrente ({count}x). Espera-se a quebra para Jogador."
                 guarantee_pattern = pattern
                 return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
-
 
     # 3. Sugestão de Empate (maior assertividade)
-    # Se o tempo desde o último empate for alto E a frequência de empates for baixa OU houver padrão de empate claro
-    if draw_specifics['time_since_last_draw'] >= 7 and draw_specifics['draw_frequency_27'] < 12: 
+    if tie_specifics['time_since_last_tie'] >= 7 and tie_specifics['tie_frequency_27'] < 12: 
         pattern_name = "Empate Atrasado/Baixa Frequência"
         confidence = adjust_confidence_by_performance(78, pattern_name)
         suggestion = f"Considerar **EMPATE** {get_color_emoji('yellow')}"
-        reason = f"Empate não ocorre há {draw_specifics['time_since_last_draw']} rodadas e frequência baixa ({draw_specifics['draw_frequency_27']}% nos últimos 27)."
+        reason = f"Empate não ocorre há {tie_specifics['time_since_last_tie']} rodadas e frequência baixa ({tie_specifics['tie_frequency_27']}% nos últimos 27)."
         guarantee_pattern = pattern_name
         
         # Reforço com padrões de empate
-        if "Red-Blue-Draw (🔴🔵🟡)" in draw_specifics['draw_patterns'] and len(results) >= 2 and results[0] == 'away' and results[1] == 'home':
-            confidence = adjust_confidence_by_performance(confidence + 10, pattern_name + " + Padrão 🔴🔵🟡") # Aumenta confiança
-            suggestion += f" - Reforçado por padrão 🔴🔵🟡."
-            guarantee_pattern += " + Padrão 🔴🔵🟡"
-        elif "Blue-Red-Draw (🔵🔴🟡)" in draw_specifics['draw_patterns'] and len(results) >= 2 and results[0] == 'home' and results[1] == 'away':
+        if "Jogador-Banca-Empate (🔵🔴🟡)" in tie_specifics['tie_patterns'] and len(results) >= 2 and results[0] == 'banker' and results[1] == 'player': # Adaptação
             confidence = adjust_confidence_by_performance(confidence + 10, pattern_name + " + Padrão 🔵🔴🟡")
             suggestion += f" - Reforçado por padrão 🔵🔴🟡."
             guarantee_pattern += " + Padrão 🔵🔴🟡"
+        elif "Banca-Jogador-Empate (🔴🔵🟡)" in tie_specifics['tie_patterns'] and len(results) >= 2 and results[0] == 'player' and results[1] == 'banker': # Adaptação
+            confidence = adjust_confidence_by_performance(confidence + 10, pattern_name + " + Padrão 🔴🔵🟡")
+            suggestion += f" - Reforçado por padrão 🔴🔵🟡."
+            guarantee_pattern += " + Padrão 🔴🔵🟡"
         
         return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
     
-    # Se os últimos 2 foram alternados (R-B ou B-R) e não houve empate em X rodadas
-    if len(results) >= 2 and ( (get_color(results[0]) == 'red' and get_color(results[1]) == 'blue') or \
-                               (get_color(results[0]) == 'blue' and get_color(results[1]) == 'red') ):
-        if draw_specifics['time_since_last_draw'] >= 3:
+    # Se os últimos 2 foram alternados (B-R ou R-B) e não houve empate em X rodadas
+    if len(results) >= 2 and ( (get_color(results[0]) == 'blue' and get_color(results[1]) == 'red') or \
+                               (get_color(results[0]) == 'red' and get_color(results[1]) == 'blue') ):
+        if tie_specifics['time_since_last_tie'] >= 3:
             pattern_name = "Alternância para Empate"
             confidence = adjust_confidence_by_performance(75, pattern_name)
             suggestion = f"Considerar **EMPATE** {get_color_emoji('yellow')}"
-            reason = "Resultados alternados (🔴🔵 ou 🔵🔴) podem preceder um empate. Empate atrasado."
+            reason = "Resultados alternados (🔵🔴 ou 🔴🔵) podem preceder um empate. Empate atrasado."
             guarantee_pattern = pattern_name
             return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
-
 
     # 4. Outras Sugestões (se as acima não se aplicarem com alta confiança)
     if break_probability['break_chance'] > 65 and current_streak < 3: 
@@ -277,19 +261,17 @@ def generate_advanced_suggestion(results, surf_analysis, color_analysis, break_p
             prev_color = get_color(results[1])
             pattern_name = "Alta Probabilidade de Quebra Geral"
             confidence = adjust_confidence_by_performance(70, pattern_name)
-            if prev_color == 'red':
-                suggestion = f"Apostar em **VISITANTE** {get_color_emoji('blue')}"
+            if prev_color == 'blue':
+                suggestion = f"Apostar em **BANCA** {get_color_emoji('red')}"
                 reason = f"Alta chance de quebra ({break_probability['break_chance']}%). Prever quebra de sequência de {prev_color.capitalize()}."
-            elif prev_color == 'blue':
-                suggestion = f"Apostar em **CASA** {get_color_emoji('red')}"
+            elif prev_color == 'red':
+                suggestion = f"Apostar em **JOGADOR** {get_color_emoji('blue')}"
                 reason = f"Alta chance de quebra ({break_probability['break_chance']}%). Prever quebra de sequência de {prev_color.capitalize()}."
             return {'suggestion': suggestion, 'confidence': confidence, 'reason': reason, 'guarantee_pattern': guarantee_pattern}
 
-
-    # 5. Default/Manter Observação (se nenhum padrão forte de "garantia" for encontrado)
     suggestion = "Manter observação."
     confidence = 50
-    reason = "Nenhum padrão de 'garantia' forte detectado nos últimos 27 resultados para uma aposta segura no momento."
+    reason = "Nenhum padrão de 'garantía' forte detectado nos últimos 27 resultados para uma aposta segura no momento."
     guarantee_pattern = "Nenhum Padrão Forte"
 
     return {
@@ -305,27 +287,27 @@ def update_analysis(results, pattern_performance):
 
     if not relevant_results_for_analysis:
         return {
-            'stats': {'home': 0, 'away': 0, 'draw': 0, 'total': 0},
+            'stats': {'player': 0, 'banker': 0, 'tie': 0, 'total': 0}, # Adaptado para 'player', 'banker', 'tie'
             'surf_analysis': analyze_surf([]),
             'color_analysis': analyze_colors([]),
             'break_patterns': find_break_patterns([]),
             'break_probability': analyze_break_probability([]),
-            'draw_specifics': analyze_draw_specifics([]),
+            'tie_specifics': analyze_tie_specifics([]),
             'suggestion': {'suggestion': 'Aguardando resultados para análise.', 'confidence': 0, 'reason': '', 'guarantee_pattern': 'N/A'}
         }
 
-    stats = {'home': relevant_results_for_analysis.count('home'), 
-             'away': relevant_results_for_analysis.count('away'), 
-             'draw': relevant_results_for_analysis.count('draw'), 
+    stats = {'player': relevant_results_for_analysis.count('player'), 
+             'banker': relevant_results_for_analysis.count('banker'), 
+             'tie': relevant_results_for_analysis.count('tie'), 
              'total': len(relevant_results_for_analysis)}
     
     surf_analysis = analyze_surf(results) 
     color_analysis = analyze_colors(results)
     break_patterns = find_break_patterns(results)
     break_probability = analyze_break_probability(results)
-    draw_specifics = analyze_draw_specifics(results) 
+    tie_specifics = analyze_tie_specifics(results)
 
-    suggestion_data = generate_advanced_suggestion(results, surf_analysis, color_analysis, break_probability, break_patterns, draw_specifics, pattern_performance)
+    suggestion_data = generate_advanced_suggestion(results, surf_analysis, color_analysis, break_probability, break_patterns, tie_specifics, pattern_performance)
     
     return {
         'stats': stats,
@@ -333,49 +315,95 @@ def update_analysis(results, pattern_performance):
         'color_analysis': color_analysis,
         'break_patterns': break_patterns,
         'break_probability': break_probability,
-        'draw_specifics': draw_specifics, 
+        'tie_specifics': tie_specifics,
         'suggestion': suggestion_data
     }
 
+# --- Função para Renderizar o Histórico (Roadmap) ---
+def render_roadmap_history(results_list_latest_first, max_cols=30):
+    """
+    Renderiza o histórico em formato de roadmap (torre e linha) usando emojis.
+    max_cols limita o número de colunas exibidas para evitar que a tela fique muito larga.
+    """
+    if not results_list_latest_first:
+        st.write("Nenhum resultado para exibir o roadmap.")
+        return
+
+    results_oldest_first = results_list_latest_first[::-1]
+
+    roadmap_columns = []
+    current_column = []
+
+    for i, result in enumerate(results_oldest_first):
+        emoji = get_color_emoji(get_color(result))
+
+        if not current_column:
+            current_column.append(emoji)
+        else:
+            last_result_in_current_col_color = get_color(results_oldest_first[i-1])
+            current_result_color = get_color(result)
+
+            if current_result_color == last_result_in_current_col_color:
+                current_column.append(emoji)
+            else:
+                roadmap_columns.append(current_column)
+                current_column = [emoji]
+    
+    if current_column:
+        roadmap_columns.append(current_column)
+
+    roadmap_columns = roadmap_columns[-max_cols:]
+
+    max_height = max(len(col) for col in roadmap_columns) if roadmap_columns else 0
+
+    display_rows = []
+    for r_idx in range(max_height):
+        row_emojis = []
+        for c_idx, col in enumerate(roadmap_columns):
+            if r_idx < len(col):
+                row_emojis.append(col[r_idx])
+            else:
+                row_emojis.append("  ")
+        display_rows.append(" ".join(row_emojis))
+
+    for row_str in reversed(display_rows):
+        st.markdown(row_str)
+
+
 # --- Streamlit UI ---
 
-st.set_page_config(layout="wide", page_title="Football Studio Pro Analyzer (AI Sim.)")
+st.set_page_config(layout="wide", page_title="Bac Bo Pro Analyzer (Roadmap e IA Sim.)")
 
-st.title("⚽ Football Studio Pro Analyzer (IA Sim. Adaptativa)")
-st.write("Sistema Avançado de Análise e Predição com Adaptação de Padrões")
+st.title("🎲 Bac Bo Pro Analyzer (Roadmap e IA Sim. Adaptativa)")
+st.write("Sistema Avançado de Análise e Predição com Adaptação de Padrões para Bac Bo")
 
 # --- Gerenciamento de Estado ---
 if 'results' not in st.session_state:
     st.session_state.results = []
-if 'last_suggested_bet_info' not in st.session_state: # Armazena a sugestão completa da rodada anterior
+if 'last_suggested_bet_info' not in st.session_state: 
     st.session_state.last_suggested_bet_info = None
-if 'guarantee_failed_streak' not in st.session_state: # Contador de falhas consecutivas de garantia
+if 'guarantee_failed_streak' not in st.session_state: 
     st.session_state.guarantee_failed_streak = 0
 if 'pattern_performance' not in st.session_state:
-    st.session_state.pattern_performance = {} # {'Pattern Name': {'successes': 0, 'failures': 0}}
+    st.session_state.pattern_performance = {} 
 
-# A análise é feita sempre com base no estado atual dos resultados e da performance dos padrões
-# Inicializa analysis_data com a função update_analysis
 if 'analysis_data' not in st.session_state:
     st.session_state.analysis_data = update_analysis(st.session_state.results, st.session_state.pattern_performance)
 
 
 # --- Função para Adicionar Resultado ---
 def add_result(result):
-    # Lógica de atualização de desempenho do padrão ANTES de adicionar o novo resultado
-    # (Referente à sugestão feita na rodada ANTERIOR)
     if st.session_state.last_suggested_bet_info:
         last_suggestion = st.session_state.last_suggested_bet_info
-        suggested_outcome = None # 'home', 'away', or 'draw' based on last_suggestion['suggestion']
+        suggested_outcome = None 
 
-        if "CASA" in last_suggestion['suggestion']:
-            suggested_outcome = 'home'
-        elif "VISITANTE" in last_suggestion['suggestion']:
-            suggested_outcome = 'away'
+        if "JOGADOR" in last_suggestion['suggestion']: # Adaptado
+            suggested_outcome = 'player'
+        elif "BANCA" in last_suggestion['suggestion']: # Adaptado
+            suggested_outcome = 'banker'
         elif "EMPATE" in last_suggestion['suggestion']:
-            suggested_outcome = 'draw'
+            suggested_outcome = 'tie'
 
-        # Se houve uma sugestão de alta confiança na rodada anterior
         if suggested_outcome and last_suggestion['confidence'] >= 70 and last_suggestion['guarantee_pattern'] != 'Nenhum Padrão Forte':
             actual_color = get_color(result)
             suggested_color = get_color(suggested_outcome)
@@ -386,32 +414,29 @@ def add_result(result):
 
             if actual_color == suggested_color:
                 st.session_state.pattern_performance[pattern_name]['successes'] += 1
-                st.session_state.guarantee_failed_streak = 0 # Resetar streak de falha
+                st.session_state.guarantee_failed_streak = 0 
             else:
                 st.session_state.pattern_performance[pattern_name]['failures'] += 1
-                st.session_state.guarantee_failed_streak += 1 # Incrementar streak de falha
+                st.session_state.guarantee_failed_streak += 1 
                 st.warning(f"🚨 **ALERTA: A GARANTIA DO PADRÃO '{pattern_name}' FALHOU!**")
                 
-        else: # Se a aposta anterior não era de alta confiança ou não tinha padrão de garantia, reseta a streak de falha
+        else: 
             st.session_state.guarantee_failed_streak = 0
 
-    # Adiciona o novo resultado
     st.session_state.results.insert(0, result) 
     st.session_state.results = st.session_state.results[:MAX_HISTORY_TO_STORE] 
     
-    # Atualiza todas as análises e a nova sugestão para a PRÓXIMA rodada
     st.session_state.analysis_data = update_analysis(st.session_state.results, st.session_state.pattern_performance)
     
-    # Armazena a sugestão gerada AGORA (para ser avaliada na PRÓXIMA adição de resultado)
     st.session_state.last_suggested_bet_info = st.session_state.analysis_data['suggestion']
     
 # --- Função para Limpar Histórico ---
 def clear_history():
     st.session_state.results = []
-    st.session_state.analysis_data = update_analysis([], {}) # Recalcula análise do zero
+    st.session_state.analysis_data = update_analysis([], {}) 
     st.session_state.last_suggested_bet_info = None
     st.session_state.guarantee_failed_streak = 0
-    st.session_state.pattern_performance = {} # Zera o desempenho dos padrões também
+    st.session_state.pattern_performance = {} 
     st.experimental_rerun() 
 
 # --- Layout ---
@@ -419,14 +444,14 @@ st.header("Registrar Resultado")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("CASA 🔴", use_container_width=True):
-        add_result('home')
+    if st.button("JOGADOR 🔵", use_container_width=True): # Botão Jogador (Azul)
+        add_result('player')
 with col2:
-    if st.button("VISITANTE 🔵", use_container_width=True):
-        add_result('away')
+    if st.button("BANCA 🔴", use_container_width=True): # Botão Banca (Vermelho)
+        add_result('banker')
 with col3:
-    if st.button("EMPATE 🟡", use_container_width=True):
-        add_result('draw')
+    if st.button("EMPATE 🟡", use_container_width=True): # Botão Empate (Amarelo)
+        add_result('tie')
 
 st.markdown("---")
 
@@ -447,6 +472,12 @@ else:
 
 st.markdown("---")
 
+# --- Histórico dos Últimos Resultados (Roadmap) ---
+st.header("📜 Histórico de Resultados (Roadmap Bac Bo)")
+render_roadmap_history(st.session_state.results) 
+
+st.markdown("---")
+
 # --- Estatísticas e Padrões (Últimos 27 Resultados) ---
 st.header(f"Estatísticas e Padrões (Últimos {NUM_RECENT_RESULTS_FOR_ANALYSIS} Resultados)")
 
@@ -455,24 +486,24 @@ stats_col, color_col = st.columns(2)
 with stats_col:
     st.subheader("Estatísticas Gerais")
     stats = st.session_state.analysis_data['stats']
-    st.write(f"**Casa {get_color_emoji('red')}:** {stats['home']} vezes")
-    st.write(f"**Visitante {get_color_emoji('blue')}:** {stats['away']} vezes")
-    st.write(f"**Empate {get_color_emoji('yellow')}:** {stats['draw']} vezes")
+    st.write(f"**Jogador {get_color_emoji('blue')}:** {stats['player']} vezes")
+    st.write(f"**Banca {get_color_emoji('red')}:** {stats['banker']} vezes")
+    st.write(f"**Empate {get_color_emoji('yellow')}:** {stats['tie']} vezes")
     st.write(f"**Total de Resultados Analisados:** {stats['total']}")
 
 with color_col:
     st.subheader("Análise de Cores")
     colors = st.session_state.analysis_data['color_analysis']
-    st.write(f"**Vermelho:** {colors['red']}x")
-    st.write(f"**Azul:** {colors['blue']}x")
-    st.write(f"**Amarelo:** {colors['yellow']}x")
+    st.write(f"**Azul (Jogador):** {colors['blue']}x")
+    st.write(f"**Vermelho (Banca):** {colors['red']}x")
+    st.write(f"**Amarelo (Empate):** {colors['yellow']}x")
     st.write(f"**Sequência Atual:** {colors['streak']}x {colors['current_color'].capitalize()} {get_color_emoji(colors['current_color'])}")
     st.markdown(f"**Padrão (Últimos {NUM_RECENT_RESULTS_FOR_ANALYSIS}):** `{colors['color_pattern_27']}`")
 
 st.markdown("---")
 
 # --- Análise de Quebra, Surf e Empate ---
-col_break, col_surf, col_draw_analysis = st.columns(3)
+col_break, col_surf, col_tie_analysis = st.columns(3)
 
 with col_break:
     st.subheader("Análise de Quebra")
@@ -491,37 +522,36 @@ with col_break:
 with col_surf:
     st.subheader("Análise de Surf")
     surf = st.session_state.analysis_data['surf_analysis']
-    st.write(f"**Seq. Atual Casa {get_color_emoji('red')}:** {surf['home_sequence']}x")
-    st.write(f"**Seq. Atual Visitante {get_color_emoji('blue')}:** {surf['away_sequence']}x")
-    st.write(f"**Seq. Atual Empate {get_color_emoji('yellow')}:** {surf['draw_sequence']}x")
+    st.write(f"**Seq. Atual Jogador {get_color_emoji('blue')}:** {surf['player_sequence']}x")
+    st.write(f"**Seq. Atual Banca {get_color_emoji('red')}:** {surf['banker_sequence']}x")
+    st.write(f"**Seq. Atual Empate {get_color_emoji('yellow')}:** {surf['tie_sequence']}x")
     st.write(f"---")
-    st.write(f"**Máx. Seq. Casa:** {surf['max_home_sequence']}x")
-    st.write(f"**Máx. Seq. Visitante:** {surf['max_away_sequence']}x")
-    st.write(f"**Máx. Seq. Empate:** {surf['max_draw_sequence']}x")
+    st.write(f"**Máx. Seq. Jogador:** {surf['max_player_sequence']}x")
+    st.write(f"**Máx. Seq. Banca:** {surf['max_banker_sequence']}x")
+    st.write(f"**Máx. Seq. Empate:** {surf['max_tie_sequence']}x")
 
-with col_draw_analysis:
+with col_tie_analysis:
     st.subheader("Análise Detalhada de Empates")
-    draw_data = st.session_state.analysis_data['draw_specifics']
-    st.write(f"**Frequência Empate ({NUM_RECENT_RESULTS_FOR_ANALYSIS}):** {draw_data['draw_frequency_27']}%")
-    st.write(f"**Rodadas sem Empate:** {draw_data['time_since_last_draw']} (Desde o último empate)")
+    tie_data = st.session_state.analysis_data['tie_specifics']
+    st.write(f"**Frequência Empate ({NUM_RECENT_RESULTS_FOR_ANALYSIS}):** {tie_data['tie_frequency_27']}%")
+    st.write(f"**Rodadas sem Empate:** {tie_data['time_since_last_tie']} (Desde o último empate)")
     
     st.subheader("Padrões de Empate Históricos")
-    if draw_data['draw_patterns']:
-        for pattern, count in draw_data['draw_patterns'].items():
+    if tie_data['tie_patterns']:
+        for pattern, count in tie_data['tie_patterns'].items():
             st.write(f"- {pattern}: {count}x")
     else:
         st.write("Nenhum padrão de empate identificado ainda.")
 
 st.markdown("---")
 
-# --- Desempenho dos Padrões (Nova Seção "IA") ---
+# --- Desempenho dos Padrões (Seção "IA") ---
 st.header("🧠 Desempenho e Adaptação dos Padrões (Simulação de IA)")
 if st.session_state.pattern_performance:
     pattern_perf_df = pd.DataFrame.from_dict(st.session_state.pattern_performance, orient='index')
     pattern_perf_df.index.name = 'Padrão'
     pattern_perf_df.reset_index(inplace=True)
     
-    # Calcular a taxa de sucesso e exibir
     pattern_perf_df['Taxa de Sucesso'] = (pattern_perf_df['successes'] / (pattern_perf_df['successes'] + pattern_perf_df['failures']) * 100).fillna(0).round(2)
     
     st.dataframe(pattern_perf_df.sort_values(by='Taxa de Sucesso', ascending=False), use_container_width=True)
@@ -532,16 +562,7 @@ else:
 
 st.markdown("---")
 
-# --- Histórico dos Últimos 100 Resultados ---
-st.header(f"Histórico dos Últimos {NUM_HISTORY_TO_DISPLAY} Resultados")
-if st.session_state.results:
-    history_to_display = st.session_state.results[:NUM_HISTORY_TO_DISPLAY]
-    history_df = pd.DataFrame(history_to_display, columns=["Resultado"])
-    history_df['Cor'] = history_df['Resultado'].apply(get_color)
-    history_df['Emoji'] = history_df['Cor'].apply(get_color_emoji)
-    
-    st.dataframe(history_df[['Resultado', 'Cor', 'Emoji']], use_container_width=True)
-    if st.button("Limpar Histórico Completo (e Dados da IA)", type="secondary"):
-        clear_history()
-else:
-    st.write("Nenhum resultado registrado ainda. Adicione resultados para começar a análise!")
+# --- Botão Limpar Histórico Geral (agora no final, para limpar tudo) ---
+st.header("Controles Gerais")
+if st.button("Limpar Histórico Completo (e Dados da IA)", type="secondary", use_container_width=True):
+    clear_history()
