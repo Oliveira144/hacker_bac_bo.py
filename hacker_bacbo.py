@@ -1,4 +1,5 @@
-import streamlit as st import collections
+import streamlit as st
+import collections
 
 --- Constantes e Funções Auxiliares ---
 
